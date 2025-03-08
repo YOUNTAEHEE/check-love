@@ -1,109 +1,292 @@
-import { StyleSheet, Image, Platform } from 'react-native';
+import {
+  StyleSheet,
+  ScrollView,
+  Image,
+  TouchableOpacity,
+  FlatList,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Text, View } from "@/components/Themed";
+import Colors from "@/constants/Colors";
+import { useColorScheme } from "react-native";
+import { FontAwesome } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 
-import { Collapsible } from '@/components/Collapsible';
-import { ExternalLink } from '@/components/ExternalLink';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+// 가상 데이터 - 실제 앱에서는 API에서 가져오거나 상태 관리를 통해 처리해야 합니다
+const USERS = [
+  {
+    id: "1",
+    name: "지민",
+    age: 28,
+    job: "그래픽 디자이너",
+    location: "서울 강남구",
+    image:
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1000",
+    values: [
+      { name: "가족관", userChoice: "가족 중심적", aiVerified: "개인주의적" },
+      { name: "일과 삶", userChoice: "워라밸 중시", aiVerified: "워라밸 중시" },
+      { name: "성격", userChoice: "활발함", aiVerified: "조용함" },
+    ],
+  },
+  {
+    id: "2",
+    name: "수현",
+    age: 26,
+    job: "마케팅 전문가",
+    location: "서울 마포구",
+    image:
+      "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?q=80&w=1000",
+    values: [
+      { name: "여행 스타일", userChoice: "계획적", aiVerified: "계획적" },
+      { name: "취미", userChoice: "독서", aiVerified: "영화 감상" },
+      { name: "미래 계획", userChoice: "안정 추구", aiVerified: "안정 추구" },
+    ],
+  },
+  {
+    id: "3",
+    name: "준혁",
+    age: 31,
+    job: "소프트웨어 개발자",
+    location: "성남시 분당구",
+    image:
+      "https://images.unsplash.com/photo-1552374196-c4e7ffc6e126?q=80&w=1000",
+    values: [
+      { name: "취미", userChoice: "헬스", aiVerified: "헬스" },
+      { name: "소통 방식", userChoice: "직설적", aiVerified: "공감적" },
+      { name: "관계 스타일", userChoice: "독립적", aiVerified: "독립적" },
+    ],
+  },
+  {
+    id: "4",
+    name: "하은",
+    age: 27,
+    job: "간호사",
+    location: "서울 송파구",
+    image:
+      "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?q=80&w=1000",
+    values: [
+      { name: "가치관", userChoice: "봉사 정신", aiVerified: "봉사 정신" },
+      { name: "취미", userChoice: "요리", aiVerified: "여행" },
+      { name: "생활방식", userChoice: "계획적", aiVerified: "즉흥적" },
+    ],
+  },
+];
 
-export default function TabTwoScreen() {
+// 가치관 일치 여부를 표시하는 컴포넌트
+function ValueMatch({ item }) {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? "light"];
+  const isMatch = item.userChoice === item.aiVerified;
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Explore</ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image source={require('@/assets/images/react-logo.png')} style={{ alignSelf: 'center' }} />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Custom fonts">
-        <ThemedText>
-          Open <ThemedText type="defaultSemiBold">app/_layout.tsx</ThemedText> to see how to load{' '}
-          <ThemedText style={{ fontFamily: 'SpaceMono' }}>
-            custom fonts such as this one.
-          </ThemedText>
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/versions/latest/sdk/font">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user's current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful <ThemedText type="defaultSemiBold">react-native-reanimated</ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+    <View style={styles.valueContainer}>
+      <Text style={styles.valueName}>{item.name}</Text>
+      <View style={styles.valueRow}>
+        <View style={[styles.valueTag, { backgroundColor: colors.subtle }]}>
+          <Text style={styles.valueChoice}>선택: {item.userChoice}</Text>
+        </View>
+        <View
+          style={[
+            styles.valueTag,
+            { backgroundColor: isMatch ? colors.success : colors.warning },
+          ]}
+        >
+          <Text style={[styles.valueVerified, { color: "white" }]}>
+            AI: {item.aiVerified}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+// 사용자 카드 컴포넌트
+function UserCard({ user }) {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? "light"];
+  const router = useRouter();
+
+  return (
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: colors.card, shadowColor: colors.cardShadow },
+      ]}
+    >
+      <Image source={{ uri: user.image }} style={styles.userImage} />
+
+      <View style={styles.userInfo}>
+        <View style={styles.nameRow}>
+          <Text style={styles.userName}>
+            {user.name}, {user.age}
+          </Text>
+          <TouchableOpacity
+            style={[styles.likeButton, { backgroundColor: colors.primary }]}
+            onPress={() => console.log("Liked", user.id)}
+          >
+            <FontAwesome name="heart" size={14} color="white" />
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.userMeta}>
+          {user.job} • {user.location}
+        </Text>
+
+        <View style={styles.divider} />
+
+        <Text style={styles.sectionTitle}>가치관 분석</Text>
+
+        {user.values.map((value, index) => (
+          <ValueMatch key={index} item={value} />
+        ))}
+
+        <TouchableOpacity
+          style={[styles.contactButton, { backgroundColor: colors.accent }]}
+          onPress={() => router.push(`/chat/${user.id}`)}
+        >
+          <Text style={styles.contactButtonText}>메세지 보내기</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+export default function ExploreScreen() {
+  const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? "light"];
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>찾아보기</Text>
+        <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.iconButton}>
+            <FontAwesome name="filter" size={18} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconButton}>
+            <FontAwesome name="sliders" size={18} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <FlatList
+        data={USERS}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => <UserCard user={item} />}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 20 }}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: {
+    flex: 1,
+    paddingHorizontal: 16,
   },
-  titleContainer: {
-    flexDirection: 'row',
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginVertical: 16,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+  },
+  headerActions: {
+    flexDirection: "row",
+  },
+  iconButton: {
+    marginLeft: 15,
+    height: 36,
+    width: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  card: {
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    overflow: "hidden",
+  },
+  userImage: {
+    width: "100%",
+    height: 240,
+  },
+  userInfo: {
+    padding: 16,
+  },
+  nameRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  userName: {
+    fontSize: 22,
+    fontWeight: "bold",
+  },
+  likeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  userMeta: {
+    fontSize: 14,
+    opacity: 0.7,
+    marginTop: 4,
+  },
+  divider: {
+    height: 1,
+    opacity: 0.1,
+    marginVertical: 16,
+    backgroundColor: "#000",
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 12,
+  },
+  valueContainer: {
+    marginBottom: 10,
+  },
+  valueName: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginBottom: 4,
+  },
+  valueRow: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
+  },
+  valueTag: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  valueChoice: {
+    fontSize: 12,
+  },
+  valueVerified: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  contactButton: {
+    marginTop: 16,
+    paddingVertical: 10,
+    borderRadius: 25,
+    alignItems: "center",
+  },
+  contactButtonText: {
+    color: "white",
+    fontWeight: "bold",
   },
 });
