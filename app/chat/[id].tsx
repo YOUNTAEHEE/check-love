@@ -1,20 +1,20 @@
-import React, { useState } from "react";
-import {
-  StyleSheet,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  TextInput,
-  FlatList,
-  Image,
-  ActivityIndicator,
-} from "react-native";
-import { useLocalSearchParams, router } from "expo-router";
 import { Text, View } from "@/components/Themed";
 import Colors from "@/constants/Colors";
-import { useColorScheme } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
+import { useLocalSearchParams, useNavigation } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import React, { useLayoutEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  useColorScheme,
+} from "react-native";
 
 // 더미 데이터
 const USERS = {
@@ -95,7 +95,13 @@ function MessageBubble({ message, user }) {
     >
       {!isMe && <Image source={{ uri: user.image }} style={styles.avatar} />}
 
-      <View>
+      <View
+        style={{
+          maxWidth: "80%",
+          alignItems: isMe ? "flex-end" : "flex-start",
+          alignSelf: isMe ? "flex-end" : "flex-start",
+        }}
+      >
         <View
           style={[
             styles.messageBubble,
@@ -112,6 +118,7 @@ function MessageBubble({ message, user }) {
               styles.messageText,
               { color: isMe ? "white" : colors.text },
             ]}
+            numberOfLines={0}
           >
             {message.text}
           </Text>
@@ -182,30 +189,17 @@ export default function ChatDetailScreen() {
     }, 1500);
   };
 
+  const navigation = useNavigation();
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: user.name,
+    });
+  }, [navigation, user.name]);
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <FontAwesome name="arrow-left" size={20} color={colors.text} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.profileContainer}
-          onPress={() => router.push(`/profile/${id}`)}
-        >
-          <Image source={{ uri: user.image }} style={styles.headerAvatar} />
-          <Text style={styles.headerName}>{user.name}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.moreButton}>
-          <FontAwesome name="ellipsis-v" size={20} color={colors.text} />
-        </TouchableOpacity>
-      </View>
 
       <FlatList
         data={messages}
@@ -278,45 +272,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 50,
-    paddingBottom: 10,
-  },
-  backButton: {
-    padding: 10,
-  },
-  moreButton: {
-    padding: 10,
-  },
-  profileContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  headerAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    marginRight: 8,
-  },
-  headerName: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
   messageList: {
     paddingHorizontal: 16,
     paddingBottom: 10,
+    paddingTop: 10,
   },
   messageRow: {
     flexDirection: "row",
     marginBottom: 16,
-    maxWidth: "80%",
+    width: "100%",
   },
   myMessageRow: {
     alignSelf: "flex-end",
+    justifyContent: "flex-end",
   },
   otherMessageRow: {
     alignSelf: "flex-start",
@@ -343,6 +311,7 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: 15,
     lineHeight: 20,
+    flexWrap: "wrap",
   },
   timestamp: {
     fontSize: 11,
