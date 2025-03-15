@@ -29,6 +29,7 @@ class ApiService {
   async removeToken() {
     this.token = null;
     await AsyncStorage.removeItem(Config.TOKEN_KEY);
+    await AsyncStorage.removeItem("userData");
   }
 
   // 기본 HTTP 요청 메서드
@@ -124,9 +125,40 @@ class ApiService {
 
     if (response.success && response.data?.accessToken) {
       await this.setToken(response.data.accessToken);
+
+      // 사용자 정보 저장
+      if (response.data.userId) {
+        await AsyncStorage.setItem(
+          "userData",
+          JSON.stringify({
+            userId: response.data.userId,
+          })
+        );
+      }
     }
 
     return response;
+  }
+
+  // 로그아웃
+  async logout(): Promise<ApiResponse<any>> {
+    try {
+      // 클라이언트에서 토큰 제거
+      await this.removeToken();
+
+      // 서버에 로그아웃 요청 - 필요한 경우 주석 해제
+      // const response = await this.post<any>('/auth/logout');
+      // return response;
+
+      // 서버 엔드포인트가 없는 경우 클라이언트 측에서만 처리
+      return { success: true };
+    } catch (error) {
+      console.error("로그아웃 오류:", error);
+      return {
+        error: "로그아웃 중 오류가 발생했습니다.",
+        success: false,
+      };
+    }
   }
 
   // 회원가입
@@ -143,7 +175,7 @@ class ApiService {
   getMessages(
     matchId: number,
     page: number = 0,
-    size: number = 20
+    size: number = 10
   ): Promise<ApiResponse<any>> {
     return this.get(`/messages/matches/${matchId}`, {
       page: page.toString(),

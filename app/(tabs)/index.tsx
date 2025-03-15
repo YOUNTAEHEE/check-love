@@ -105,6 +105,15 @@ export default function HomeScreen() {
         >
           <Text style={styles.buttonText}>시작하기</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.buttonSecondary, { borderColor: colors.primary }]}
+          onPress={() => router.push("/auth/login")}
+        >
+          <Text style={[styles.buttonSecondaryText, { color: colors.primary }]}>
+            로그인
+          </Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -202,9 +211,21 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignItems: "center",
     marginHorizontal: 25,
+    marginBottom: 15,
   },
   buttonText: {
     color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  buttonSecondary: {
+    paddingVertical: 14,
+    borderRadius: 30,
+    alignItems: "center",
+    marginHorizontal: 25,
+    borderWidth: 1,
+  },
+  buttonSecondaryText: {
     fontSize: 16,
     fontWeight: "bold",
   },

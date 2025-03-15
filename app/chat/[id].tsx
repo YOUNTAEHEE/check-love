@@ -3,7 +3,7 @@ import Colors from "@/constants/Colors";
 import ApiService from "@/services/ApiService";
 import ChatService from "@/services/ChatService";
 import { FontAwesome } from "@expo/vector-icons";
-import { useLocalSearchParams, useNavigation } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
@@ -12,10 +12,12 @@ import {
   FlatList,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   StyleSheet,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   useColorScheme,
 } from "react-native";
 
@@ -152,6 +154,7 @@ function DateDivider({ date }) {
 export default function ChatDetailScreen() {
   const { id } = useLocalSearchParams();
   const matchId = typeof id === "string" ? parseInt(id, 10) : 1;
+  const router = useRouter();
 
   // 실제 환경에서는 API에서 사용자 정보를 가져옵니다
   const user = USERS[id as string] || {
@@ -169,15 +172,33 @@ export default function ChatDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [showAttachOptions, setShowAttachOptions] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
   const navigation = useNavigation();
 
-  // 화면 타이틀 설정
+  // 화면 타이틀 및 헤더 버튼 설정
   useLayoutEffect(() => {
     navigation.setOptions({
       title: user.name,
+      headerLeft: () => (
+        <TouchableOpacity
+          style={styles.headerButton}
+          onPress={() => router.back()}
+        >
+          <FontAwesome name="angle-left" size={24} color={colors.text} />
+        </TouchableOpacity>
+      ),
+      headerRight: () => (
+        <TouchableOpacity
+          style={styles.headerButton}
+          onPress={() => setShowMenu(true)}
+        >
+          <FontAwesome name="ellipsis-v" size={20} color={colors.text} />
+        </TouchableOpacity>
+      ),
     });
-  }, [navigation, user.name]);
+  }, [navigation, user.name, colors.text, router]);
 
   // 채팅 서비스 초기화 및 메시지 수신 설정
   useEffect(() => {
@@ -322,9 +343,225 @@ export default function ChatDetailScreen() {
     }
   };
 
+  // 첨부 옵션 처리 함수들
+  const handleAttachPress = () => {
+    setShowAttachOptions(true);
+  };
+
+  const handleImagePicker = async () => {
+    setShowAttachOptions(false);
+    Alert.alert("알림", "이미지 선택 기능은 아직 개발 중입니다.");
+    // TODO: 이미지 선택 로직 구현
+  };
+
+  const handleCamera = async () => {
+    setShowAttachOptions(false);
+    Alert.alert("알림", "카메라 기능은 아직 개발 중입니다.");
+    // TODO: 카메라 실행 로직 구현
+  };
+
+  const handleFilePicker = async () => {
+    setShowAttachOptions(false);
+    Alert.alert("알림", "파일 선택 기능은 아직 개발 중입니다.");
+    // TODO: 파일 선택 로직 구현
+  };
+
+  const handleLocationShare = () => {
+    setShowAttachOptions(false);
+    Alert.alert("알림", "위치 공유 기능은 아직 개발 중입니다.");
+    // TODO: 위치 공유 로직 구현
+  };
+
+  // 채팅방 나가기 처리
+  const handleLeaveChat = () => {
+    setShowMenu(false);
+    Alert.alert(
+      "채팅방 나가기",
+      "정말로 이 채팅방을 나가시겠습니까?\n나가면 채팅 내용이 모두 삭제됩니다.",
+      [
+        { text: "취소", style: "cancel" },
+        {
+          text: "나가기",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // TODO: 실제 API 구현 시 주석 해제
+              // await ApiService.leaveChat(matchId);
+
+              router.back();
+            } catch (error) {
+              console.error("채팅방 나가기 오류:", error);
+              Alert.alert(
+                "오류",
+                "채팅방을 나갈 수 없습니다. 다시 시도해주세요."
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // 사용자 신고 처리
+  const handleReportUser = () => {
+    setShowMenu(false);
+    Alert.alert("사용자 신고", "이 사용자를 신고하시겠습니까?", [
+      { text: "취소", style: "cancel" },
+      {
+        text: "신고하기",
+        style: "destructive",
+        onPress: () => {
+          // 신고 사유 선택
+          Alert.alert("신고 사유", "신고 사유를 선택해주세요.", [
+            { text: "취소", style: "cancel" },
+            {
+              text: "부적절한 내용",
+              onPress: () => handleSubmitReport("부적절한 내용"),
+            },
+            { text: "스팸", onPress: () => handleSubmitReport("스팸") },
+            {
+              text: "사칭/허위 정보",
+              onPress: () => handleSubmitReport("사칭/허위 정보"),
+            },
+            { text: "기타", onPress: () => handleSubmitReport("기타") },
+          ]);
+        },
+      },
+    ]);
+  };
+
+  // 신고 제출
+  const handleSubmitReport = async (reason: string) => {
+    try {
+      // TODO: 실제 API 구현 시 주석 해제
+      // await ApiService.reportUser(matchId, reason);
+
+      Alert.alert(
+        "신고가 접수되었습니다",
+        "신고가 접수되었습니다. 신고 내용은 검토 후 처리됩니다."
+      );
+    } catch (error) {
+      console.error("사용자 신고 오류:", error);
+      Alert.alert("오류", "신고를 접수할 수 없습니다. 다시 시도해주세요.");
+    }
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
+
+      {/* 메뉴 모달 */}
+      <Modal
+        visible={showMenu}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowMenu(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowMenu(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View
+                style={[
+                  styles.menuContainer,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+              >
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={handleLeaveChat}
+                >
+                  <FontAwesome name="sign-out" size={18} color={colors.error} />
+                  <Text style={[styles.menuItemText, { color: colors.error }]}>
+                    채팅방 나가기
+                  </Text>
+                </TouchableOpacity>
+
+                <View
+                  style={[
+                    styles.menuDivider,
+                    { backgroundColor: colors.border },
+                  ]}
+                />
+
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={handleReportUser}
+                >
+                  <FontAwesome name="flag" size={18} color={colors.warning} />
+                  <Text
+                    style={[styles.menuItemText, { color: colors.warning }]}
+                  >
+                    신고하기
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* 첨부 옵션 모달 */}
+      <Modal
+        visible={showAttachOptions}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowAttachOptions(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowAttachOptions(false)}>
+          <View style={styles.modalOverlay}>
+            <View
+              style={[
+                styles.attachOptionsContainer,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <TouchableOpacity
+                style={styles.attachOption}
+                onPress={handleImagePicker}
+              >
+                <FontAwesome name="image" size={24} color={colors.primary} />
+                <Text style={[styles.attachOptionText, { color: colors.text }]}>
+                  이미지
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.attachOption}
+                onPress={handleCamera}
+              >
+                <FontAwesome name="camera" size={24} color={colors.primary} />
+                <Text style={[styles.attachOptionText, { color: colors.text }]}>
+                  카메라
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.attachOption}
+                onPress={handleFilePicker}
+              >
+                <FontAwesome name="file" size={24} color={colors.primary} />
+                <Text style={[styles.attachOptionText, { color: colors.text }]}>
+                  파일
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.attachOption}
+                onPress={handleLocationShare}
+              >
+                <FontAwesome
+                  name="map-marker"
+                  size={24}
+                  color={colors.primary}
+                />
+                <Text style={[styles.attachOptionText, { color: colors.text }]}>
+                  위치
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
 
       <FlatList
         ref={flatListRef}
@@ -366,7 +603,10 @@ export default function ChatDetailScreen() {
         keyboardVerticalOffset={100}
         style={[styles.inputContainer, { borderColor: colors.border }]}
       >
-        <TouchableOpacity style={styles.attachButton}>
+        <TouchableOpacity
+          style={styles.attachButton}
+          onPress={handleAttachPress}
+        >
           <FontAwesome name="plus" size={20} color={colors.primary} />
         </TouchableOpacity>
 
@@ -526,5 +766,56 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginLeft: 6,
     opacity: 0.7,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+  },
+  attachOptionsContainer: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+  },
+  attachOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 15,
+  },
+  attachOptionText: {
+    fontSize: 16,
+    marginLeft: 15,
+  },
+  headerButton: {
+    paddingHorizontal: 15,
+    height: 44,
+    justifyContent: "center",
+  },
+  menuContainer: {
+    position: "absolute",
+    width: 180,
+    top: 55,
+    right: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    overflow: "hidden",
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 15,
+  },
+  menuItemText: {
+    fontSize: 16,
+    marginLeft: 10,
+  },
+  menuDivider: {
+    height: 1,
+    width: "100%",
   },
 });

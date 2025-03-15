@@ -9,11 +9,11 @@
 // 다음 중 사용하는 환경에 맞게 선택하세요:
 const DEV_API_URL_ANDROID = "http://10.0.2.2:8080/api"; // Android 에뮬레이터 기준
 const DEV_API_URL_IOS = "http://localhost:8080/api"; // iOS 시뮬레이터 기준
-const DEV_API_URL_DEVICE = "http://192.168.0.xxx:8080/api"; // 실제 디바이스 (IP 주소 변경 필요)
+const DEV_API_URL_DEVICE = "http://localhost:8080/api"; // 실제 디바이스 (로컬 서버 기준)
 
 const DEV_WS_URL_ANDROID = "ws://10.0.2.2:8080/ws"; // WebSocket Android 에뮬레이터 기준
 const DEV_WS_URL_IOS = "ws://localhost:8080/ws"; // WebSocket iOS 시뮬레이터 기준
-const DEV_WS_URL_DEVICE = "ws://192.168.0.xxx:8080/ws"; // WebSocket 실제 디바이스 (IP 주소 변경 필요)
+const DEV_WS_URL_DEVICE = "ws://localhost:8080/ws"; // WebSocket 실제 디바이스 (로컬 서버 기준)
 
 // 배포 환경 URL (예시)
 const PROD_API_URL = "https://api.checklove.com/api";
@@ -23,8 +23,8 @@ const PROD_WS_URL = "wss://api.checklove.com/ws";
 const IS_PRODUCTION = false; // 개발 중에는 false로 설정
 
 // 현재 사용할 API URL 선택 (환경에 맞게 수정하세요)
-const CURRENT_DEV_API_URL = DEV_API_URL_ANDROID; // 혹은 DEV_API_URL_IOS 또는 DEV_API_URL_DEVICE
-const CURRENT_DEV_WS_URL = DEV_WS_URL_ANDROID; // 혹은 DEV_WS_URL_IOS 또는 DEV_WS_URL_DEVICE
+const CURRENT_DEV_API_URL = DEV_API_URL_DEVICE; // 현재 환경에 맞는 URL 선택
+const CURRENT_DEV_WS_URL = DEV_WS_URL_DEVICE; // 현재 환경에 맞는 WebSocket URL 선택
 
 export default {
   API_URL: IS_PRODUCTION ? PROD_API_URL : CURRENT_DEV_API_URL,

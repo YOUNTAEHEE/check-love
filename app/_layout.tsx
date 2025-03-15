@@ -36,9 +36,23 @@ export default function RootLayout() {
 
         // 인증 상태에 따라 WebSocket 연결 설정
         if (token) {
-          // 여기서는 예시로 사용자 ID를 1로 설정
-          // 실제로는 토큰에서 사용자 ID를 추출하거나 API 호출로 가져와야 함
-          ChatService.setUserId(1);
+          // userData에서 사용자 ID 가져오기
+          const userDataStr = await AsyncStorage.getItem("userData");
+          let userId = 1; // 기본값
+
+          if (userDataStr) {
+            try {
+              const userData = JSON.parse(userDataStr);
+              if (userData && userData.userId) {
+                userId = userData.userId;
+              }
+            } catch (err) {
+              console.error("사용자 데이터 파싱 오류:", err);
+            }
+          }
+
+          // 채팅 서비스 초기화
+          ChatService.setUserId(userId);
           ChatService.initialize();
         }
       } catch (e) {

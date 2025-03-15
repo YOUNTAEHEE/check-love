@@ -20,8 +20,8 @@ class MockClient {
 
   activate() {
     console.log("MockClient: 연결 시도 (실제 연결되지 않음)");
-    // 연결 시뮬레이션 (자동 메시지 없음)
-    setTimeout(() => this.onConnect(), 500);
+    // 연결 시뮬레이션 - 지연 시간 단축
+    setTimeout(() => this.onConnect(), 100);
   }
 
   deactivate() {
