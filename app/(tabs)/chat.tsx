@@ -1,10 +1,18 @@
-import { StyleSheet, FlatList, Image, TouchableOpacity } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, View } from "@/components/Themed";
 import Colors from "@/constants/Colors";
-import { useColorScheme } from "react-native";
+import Config from "@/constants/Config";
 import { FontAwesome } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+  FlatList,
+  Image,
+  StyleSheet,
+  TouchableOpacity,
+  useColorScheme,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // 가상 데이터
 const CHATS = [
@@ -92,6 +100,49 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
+  const router = useRouter();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 로그인 상태 확인
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      try {
+        const token = await AsyncStorage.getItem(Config.TOKEN_KEY);
+        const isAuthenticated = !!token;
+        setIsLoggedIn(isAuthenticated);
+
+        // 로그인 되어 있지 않으면 홈 화면으로 리다이렉트
+        if (!isAuthenticated) {
+          console.log("로그인되지 않음: 홈 화면으로 리다이렉트");
+          router.replace("/(tabs)");
+          return;
+        }
+
+        setIsLoading(false);
+      } catch (error) {
+        console.error("로그인 상태 확인 중 오류:", error);
+        setIsLoggedIn(false);
+        router.replace("/(tabs)");
+      }
+    };
+
+    checkLoginStatus();
+  }, []);
+
+  // 로딩 중이거나 로그인되지 않았으면 빈 화면 표시
+  if (isLoading || !isLoggedIn) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <Text>로딩 중...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>

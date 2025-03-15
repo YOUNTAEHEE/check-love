@@ -1,11 +1,14 @@
 import { Text, View } from "@/components/Themed";
 import Colors from "@/constants/Colors";
+import ApiService from "@/services/ApiService";
+import ChatService from "@/services/ChatService";
 import { FontAwesome } from "@expo/vector-icons";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useLayoutEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   KeyboardAvoidingView,
@@ -16,7 +19,7 @@ import {
   useColorScheme,
 } from "react-native";
 
-// 더미 데이터
+// 더미 데이터 - 실제 구현 시 서버에서 가져오는 데이터로 교체할 예정
 const USERS = {
   "1": {
     name: "지민",
@@ -148,6 +151,9 @@ function DateDivider({ date }) {
 
 export default function ChatDetailScreen() {
   const { id } = useLocalSearchParams();
+  const matchId = typeof id === "string" ? parseInt(id, 10) : 1;
+
+  // 실제 환경에서는 API에서 사용자 정보를 가져옵니다
   const user = USERS[id as string] || {
     name: "사용자",
     image: "https://via.placeholder.com/150",
@@ -155,59 +161,189 @@ export default function ChatDetailScreen() {
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
+  const flatListRef = useRef<FlatList>(null);
 
-  const [messages, setMessages] = useState(INITIAL_MESSAGES);
+  const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
   const [isSending, setIsSending] = useState(false);
-
-  const handleSend = () => {
-    if (!inputText.trim()) return;
-
-    setIsSending(true);
-
-    const newMessage = {
-      id: Date.now().toString(),
-      text: inputText,
-      senderId: "me",
-      timestamp: Date.now(),
-    };
-
-    setMessages((prev) => [newMessage, ...prev]);
-    setInputText("");
-
-    // 자동 응답 시뮬레이션 (실제 앱에서는 서버 통신)
-    setTimeout(() => {
-      const autoReply = {
-        id: (Date.now() + 1).toString(),
-        text: "네, 알겠습니다. 더 이야기해볼까요?",
-        senderId: "other",
-        timestamp: Date.now() + 1,
-      };
-
-      setMessages((prev) => [autoReply, ...prev]);
-      setIsSending(false);
-    }, 1500);
-  };
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
 
   const navigation = useNavigation();
 
+  // 화면 타이틀 설정
   useLayoutEffect(() => {
     navigation.setOptions({
       title: user.name,
     });
   }, [navigation, user.name]);
 
+  // 채팅 서비스 초기화 및 메시지 수신 설정
+  useEffect(() => {
+    const currentUserId = 1; // 임시, 실제로는 로그인 정보에서 가져옵니다
+
+    // 실시간 메시지 수신 설정
+    ChatService.setUserId(currentUserId);
+
+    if (!ChatService.isConnected()) {
+      ChatService.initialize();
+    }
+
+    // 메시지 수신 이벤트 핸들러 등록
+    ChatService.onMessage((receivedMessage) => {
+      setMessages((prevMessages) => [receivedMessage, ...prevMessages]);
+    });
+
+    // 초기 메시지 로드
+    loadMessages(true);
+
+    // 메시지를 읽음으로 표시
+    markMessagesAsRead();
+
+    return () => {
+      // 필요한 경우 정리 작업 수행
+    };
+  }, [matchId]);
+
+  // 초기 메시지 로드 또는 추가 메시지 로드
+  const loadMessages = async (initial = false) => {
+    if (initial) {
+      setLoading(true);
+      setPage(0);
+    }
+
+    if (!hasMore && !initial) return;
+
+    try {
+      const currentPage = initial ? 0 : page;
+      const response = await ApiService.getMessages(matchId, currentPage);
+
+      if (response.success && response.data) {
+        const newMessages = response.data.messages || [];
+        setMessages((prevMessages) =>
+          initial ? newMessages : [...prevMessages, ...newMessages]
+        );
+        setHasMore(
+          newMessages.length > 0 && currentPage < response.data.totalPages - 1
+        );
+        setPage(currentPage + 1);
+      } else {
+        // API 오류 또는 개발 테스트용 더미 데이터 사용
+        console.log("API 응답 없음, 더미 데이터 사용");
+        // 첫 로드 시에만 더미 데이터 사용, 추가 로드 시에는 빈 배열
+        setMessages(initial ? INITIAL_MESSAGES : [...messages]);
+        setHasMore(false);
+      }
+    } catch (error) {
+      console.error("메시지 로딩 오류:", error);
+      // 오류 발생 시 더미 데이터 사용
+      console.log("API 오류, 더미 데이터 사용");
+      setMessages(initial ? INITIAL_MESSAGES : [...messages]);
+      setHasMore(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 메시지를 읽음으로 표시
+  const markMessagesAsRead = async () => {
+    try {
+      await ApiService.markMessagesAsRead(matchId);
+    } catch (error) {
+      console.error("메시지 읽음 표시 오류:", error);
+    }
+  };
+
+  // 메시지 전송
+  const handleSend = async () => {
+    if (!inputText.trim()) return;
+
+    setIsSending(true);
+    const messageText = inputText.trim();
+    setInputText("");
+
+    // 현재 사용자 ID (실제로는 로그인한 사용자 ID)
+    const currentUserId = 1;
+    // 상대방 ID (매치 정보에서 가져와야 함)
+    const otherUserId = 2;
+
+    // 로컬 UI 업데이트를 위한 메시지 객체
+    const localMessage = {
+      id: Date.now().toString(),
+      text: messageText,
+      senderId: "me",
+      timestamp: Date.now(),
+    };
+
+    // UI 업데이트
+    setMessages((prev) => [localMessage, ...prev]);
+
+    try {
+      // 실제 메시지 전송 (WebSocket)
+      const chatMessage: ChatMessage = {
+        type: "CHAT",
+        matchId,
+        senderId: currentUserId,
+        receiverId: otherUserId,
+        content: messageText,
+      };
+
+      const sent = ChatService.sendMessage(chatMessage);
+
+      if (!sent) {
+        throw new Error("메시지 전송 실패");
+      }
+
+      // 실제 WebSocket이 연결되면 자동 응답 코드는 제거해야 합니다
+      // 현재는 임시로 주석 처리합니다
+      /* 
+      setTimeout(() => {
+        const autoReply = {
+          id: (Date.now() + 1).toString(),
+          text: "네, 알겠습니다. 더 이야기해볼까요?",
+          senderId: "other",
+          timestamp: Date.now() + 1,
+        };
+        setMessages((prev) => [autoReply, ...prev]);
+      }, 1500);
+      */
+    } catch (error) {
+      console.error("메시지 전송 오류:", error);
+      Alert.alert(
+        "오류",
+        "메시지를 보낼 수 없습니다. 나중에 다시 시도해주세요."
+      );
+
+      // 실패 시 메시지 제거 또는 표시 변경
+      setMessages((prev) => prev.filter((msg) => msg.id !== localMessage.id));
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
 
       <FlatList
+        ref={flatListRef}
         data={messages}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <MessageBubble message={item} user={user} />}
         inverted
         contentContainerStyle={styles.messageList}
         showsVerticalScrollIndicator={false}
+        onEndReached={() => !loading && hasMore && loadMessages()}
+        onEndReachedThreshold={0.3}
+        ListFooterComponent={
+          hasMore ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={styles.loadingText}>메시지 로딩 중...</Text>
+            </View>
+          ) : null
+        }
         ListHeaderComponent={
           <View style={styles.typingContainer}>
             {isSending && (
@@ -379,5 +515,16 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
+  },
+  loadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 10,
+  },
+  loadingText: {
+    fontSize: 13,
+    marginLeft: 6,
+    opacity: 0.7,
   },
 });

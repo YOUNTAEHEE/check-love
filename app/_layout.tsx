@@ -1,3 +1,6 @@
+import Config from "@/constants/Config";
+import ChatService from "@/services/ChatService";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   DarkTheme,
   DefaultTheme,
@@ -7,7 +10,7 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import "react-native-reanimated";
 
 import { useColorScheme } from "@/hooks/useColorScheme";
@@ -17,18 +20,73 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
+  const [fontsLoaded, setFontsLoaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
+  const [isReady, setIsReady] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  // 앱 초기화 및 인증 상태 확인
+  useEffect(() => {
+    async function prepare() {
+      try {
+        // 사용자 토큰 확인
+        const token = await AsyncStorage.getItem(Config.TOKEN_KEY);
+        setIsAuthenticated(!!token);
+
+        // 인증 상태에 따라 WebSocket 연결 설정
+        if (token) {
+          // 여기서는 예시로 사용자 ID를 1로 설정
+          // 실제로는 토큰에서 사용자 ID를 추출하거나 API 호출로 가져와야 함
+          ChatService.setUserId(1);
+          ChatService.initialize();
+        }
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        // 준비 상태로 설정
+        setIsReady(true);
+      }
+    }
+
+    prepare();
+  }, []);
 
   useEffect(() => {
-    if (loaded) {
+    if (fontsLoaded && isReady) {
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [fontsLoaded, isReady]);
 
-  if (!loaded) {
+  if (!fontsLoaded || !isReady || isAuthenticated === null) {
     return null;
+  }
+
+  // 인증 상태에 따라 리디렉션
+  if (!isAuthenticated) {
+    return (
+      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            animation: "slide_from_right", // 화면 전환 애니메이션 추가
+          }}
+        >
+          <Stack.Screen name="index" />
+          <Stack.Screen name="onboarding" />
+          <Stack.Screen
+            name="survey"
+            options={{
+              animation: "slide_from_right",
+              gestureEnabled: false, // 뒤로 스와이프 제스처 비활성화
+            }}
+          />
+          <Stack.Screen name="auth/login" />
+          <Stack.Screen name="auth/signup" />
+        </Stack>
+        <StatusBar style="auto" />
+      </ThemeProvider>
+    );
   }
 
   return (

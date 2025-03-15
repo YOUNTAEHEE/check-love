@@ -1,300 +1,234 @@
-import React, { useState } from "react";
-import {
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Image,
-  ActivityIndicator,
-} from "react-native";
-import { router } from "expo-router";
 import { Text, View } from "@/components/Themed";
 import Colors from "@/constants/Colors";
-import { useColorScheme } from "react-native";
+import Config from "@/constants/Config";
 import { FontAwesome } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  useColorScheme,
+} from "react-native";
 
-// 가치관 설문 질문 데이터
+const { width } = Dimensions.get("window");
+
+// 설문 질문 데이터
 const QUESTIONS = [
   {
     id: 1,
-    question: "가족에 대해 어떻게 생각하시나요?",
+    question: "결혼에 대해 어떻게 생각하시나요?",
     options: [
-      {
-        id: "a",
-        text: "가족이 가장 중요하다",
-        description: "가족 중심적인 가치관",
-      },
-      {
-        id: "b",
-        text: "개인의 삶과 균형이 필요하다",
-        description: "개인 생활과 가족의 균형",
-      },
-      {
-        id: "c",
-        text: "개인의 성장이 우선이다",
-        description: "개인주의적 가치관",
-      },
+      "반드시 해야 한다고 생각한다",
+      "하고 싶지만 필수는 아니다",
+      "별로 관심이 없다",
+      "결혼 제도에 반대한다",
     ],
-    image:
-      "https://images.unsplash.com/photo-1607962837359-5e7e89f86776?q=80&w=1000",
   },
   {
     id: 2,
-    question: "여행 스타일은 어떤가요?",
+    question: "자녀 계획에 대해 어떻게 생각하시나요?",
     options: [
-      { id: "a", text: "꼼꼼하게 계획을 세운다", description: "계획적인 성향" },
-      {
-        id: "b",
-        text: "대략적인 계획만 세우고 현지에서 결정한다",
-        description: "유연한 계획성",
-      },
-      {
-        id: "c",
-        text: "계획 없이 즉흥적으로 여행한다",
-        description: "즉흥적인 성향",
-      },
+      "반드시 자녀를 갖고 싶다",
+      "상황에 따라 생각해볼 수 있다",
+      "자녀 계획은 없다",
+      "아직 결정하지 못했다",
     ],
-    image:
-      "https://images.unsplash.com/photo-1504195342853-e41bf3e3fac5?q=80&w=1000",
   },
   {
     id: 3,
-    question: "업무와 일상 생활의 균형에 대해 어떻게 생각하시나요?",
+    question: "일과 가정의 균형에 대해 어떻게 생각하시나요?",
     options: [
-      {
-        id: "a",
-        text: "경력 발전을 최우선시한다",
-        description: "일 중심적 성향",
-      },
-      {
-        id: "b",
-        text: "일과 삶의 균형이 중요하다",
-        description: "워라밸 중시",
-      },
-      {
-        id: "c",
-        text: "삶의 즐거움이 더 중요하다",
-        description: "삶 중심적 성향",
-      },
+      "가정이 최우선이다",
+      "일과 가정의 균형이 중요하다",
+      "일이 더 중요하다",
+      "상황에 따라 다르다",
     ],
-    image:
-      "https://images.unsplash.com/photo-1551836022-deb4988cc6c0?q=80&w=1000",
   },
   {
     id: 4,
-    question: "미래에 대한 계획은 어떻게 세우시나요?",
+    question: "경제적 가치관에 대해 어떻게 생각하시나요?",
     options: [
-      { id: "a", text: "안정적인 삶을 추구한다", description: "안정 추구" },
-      {
-        id: "b",
-        text: "도전적인 목표를 세우고 추진한다",
-        description: "도전 추구",
-      },
-      { id: "c", text: "꿈을 따라 자유롭게 살고 싶다", description: "꿈 추구" },
+      "저축과 안정성을 중요시한다",
+      "적절한 소비와 투자의 균형을 추구한다",
+      "현재의 만족과 경험을 중요시한다",
+      "경제적 성공과 부를 중요시한다",
     ],
-    image:
-      "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1000",
   },
   {
     id: 5,
-    question: "상대방과 대화할 때 어떤 스타일을 선호하시나요?",
+    question: "종교나 신앙에 대해 어떻게 생각하시나요?",
     options: [
-      { id: "a", text: "직설적이고 솔직하게 소통한다", description: "솔직함" },
-      { id: "b", text: "상대방의 감정을 고려해 말한다", description: "공감적" },
-      {
-        id: "c",
-        text: "대화보다는 행동으로 보여준다",
-        description: "행동 중심적",
-      },
+      "종교/신앙이 내 삶의 중심이다",
+      "종교가 있지만 강하게 실천하지는 않는다",
+      "무신론자/불가지론자이다",
+      "영적이지만 특정 종교는 없다",
     ],
-    image:
-      "https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=1000",
   },
 ];
-
-// 옵션 컴포넌트
-function OptionCard({ option, selected, onSelect }) {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "light"];
-
-  return (
-    <TouchableOpacity
-      style={[
-        styles.optionCard,
-        {
-          backgroundColor: selected ? colors.primary : colors.card,
-          borderColor: selected ? colors.primary : colors.border,
-        },
-      ]}
-      onPress={() => onSelect(option.id)}
-    >
-      <Text
-        style={[styles.optionText, { color: selected ? "white" : undefined }]}
-      >
-        {option.text}
-      </Text>
-      <Text
-        style={[
-          styles.optionDescription,
-          { color: selected ? "rgba(255,255,255,0.8)" : undefined },
-        ]}
-      >
-        {option.description}
-      </Text>
-
-      {selected && (
-        <View style={styles.checkIcon}>
-          <FontAwesome name="check" size={16} color="white" />
-        </View>
-      )}
-    </TouchableOpacity>
-  );
-}
-
-// 진행 상태 표시 컴포넌트
-function ProgressBar({ current, total }) {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "light"];
-
-  return (
-    <View style={styles.progressContainer}>
-      <View style={[styles.progressBar, { backgroundColor: colors.subtle }]}>
-        <View
-          style={[
-            styles.progressFill,
-            {
-              backgroundColor: colors.primary,
-              width: `${(current / total) * 100}%`,
-            },
-          ]}
-        />
-      </View>
-      <Text style={styles.progressText}>
-        {current}/{total}
-      </Text>
-    </View>
-  );
-}
 
 export default function SurveyScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState({});
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [answers, setAnswers] = useState<Record<number, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const currentQuestion = QUESTIONS[currentQuestionIndex];
-  const isLastQuestion = currentQuestionIndex === QUESTIONS.length - 1;
+  // 페이지 로드 확인용 로그
+  console.log("설문조사 페이지 로드됨");
 
-  const handleSelectOption = (optionId) => {
-    setAnswers({
-      ...answers,
-      [currentQuestion.id]: optionId,
-    });
-  };
+  const handleAnswer = (questionId: number, answerIndex: number) => {
+    setAnswers((prev) => ({
+      ...prev,
+      [questionId]: answerIndex,
+    }));
 
-  const handleNext = () => {
-    if (isLastQuestion) {
-      handleSubmit();
-    } else {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    // 다음 질문으로 이동
+    if (currentQuestion < QUESTIONS.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
     }
   };
 
-  const handleBack = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
-    } else {
-      router.back();
-    }
-  };
-
-  const handleSubmit = () => {
+  const handleComplete = async () => {
     setIsSubmitting(true);
 
-    // 실제 앱에서는 여기서 서버에 데이터를 보내거나 상태 관리를 통해 처리합니다.
-    // 여기서는 시뮬레이션을 위해 setTimeout을 사용합니다.
-    setTimeout(() => {
-      setIsSubmitting(false);
-      // AI 검증 페이지로 이동
-      router.push("/ai-verify");
-    }, 2000);
+    try {
+      // 설문 응답 데이터 준비 (로그로 기록)
+      const surveyData = {
+        answers: Object.entries(answers).map(([questionId, answerIndex]) => ({
+          questionId: parseInt(questionId),
+          answerIndex: answerIndex,
+        })),
+      };
+
+      console.log("설문 응답 데이터:", JSON.stringify(surveyData));
+
+      // 개발 모드에서는 API 호출 없이 바로 탐색 페이지로 이동
+      console.log("설문 완료: 탐색 페이지로 이동 시도");
+
+      // 로그인 상태를 localStorage에 저장 (개발용)
+      await AsyncStorage.setItem(
+        Config.TOKEN_KEY,
+        "dummy-token-for-development"
+      );
+
+      // 1초 후 탐색 페이지로 이동 (잠시 지연 추가)
+      setTimeout(() => {
+        setIsSubmitting(false);
+        router.replace("/(tabs)/explore");
+      }, 1000);
+
+      // 원래 코드는 주석 처리
+    } catch (error) {
+      console.error("설문 제출 오류:", error);
+
+      // 오류가 발생해도 탐색 페이지로 이동 (개발 모드)
+      Alert.alert(
+        "알림",
+        "개발 모드: 설문이 제출되어 탐색 화면으로 이동합니다.",
+        [
+          {
+            text: "확인",
+            onPress: () => {
+              setIsSubmitting(false);
+              router.replace("/(tabs)/explore");
+            },
+          },
+        ]
+      );
+    }
   };
 
-  const isAnswered = !!answers[currentQuestion.id];
+  const isLastQuestion = currentQuestion === QUESTIONS.length - 1;
+  const currentQuestionData = QUESTIONS[currentQuestion];
+  const progress = ((currentQuestion + 1) / QUESTIONS.length) * 100;
 
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => {
+            if (currentQuestion > 0) {
+              setCurrentQuestion(currentQuestion - 1);
+            } else {
+              router.back();
+            }
+          }}
+        >
           <FontAwesome name="arrow-left" size={20} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>가치관 설문</Text>
+        <Text style={styles.headerTitle}>가치관 설문조사</Text>
         <View style={styles.placeholder} />
       </View>
 
-      <ProgressBar
-        current={currentQuestionIndex + 1}
-        total={QUESTIONS.length}
-      />
+      <View style={styles.progressContainer}>
+        <View
+          style={[
+            styles.progressBar,
+            { width: `${progress}%`, backgroundColor: colors.primary },
+          ]}
+        />
+      </View>
 
       <ScrollView
         style={styles.content}
+        contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
       >
-        <Image
-          source={{ uri: currentQuestion.image }}
-          style={styles.questionImage}
-        />
-
-        <Text style={styles.questionText}>{currentQuestion.question}</Text>
+        <Text style={styles.questionNumber}>
+          질문 {currentQuestion + 1}/{QUESTIONS.length}
+        </Text>
+        <Text style={styles.question}>{currentQuestionData.question}</Text>
 
         <View style={styles.optionsContainer}>
-          {currentQuestion.options.map((option) => (
-            <OptionCard
-              key={option.id}
-              option={option}
-              selected={answers[currentQuestion.id] === option.id}
-              onSelect={handleSelectOption}
-            />
+          {currentQuestionData.options.map((option, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.optionButton,
+                answers[currentQuestionData.id] === index && {
+                  backgroundColor: colors.primary,
+                },
+              ]}
+              onPress={() => handleAnswer(currentQuestionData.id, index)}
+            >
+              <Text
+                style={[
+                  styles.optionText,
+                  answers[currentQuestionData.id] === index && {
+                    color: "white",
+                  },
+                ]}
+              >
+                {option}
+              </Text>
+            </TouchableOpacity>
           ))}
         </View>
-      </ScrollView>
 
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[
-            styles.nextButton,
-            {
-              backgroundColor: isAnswered ? colors.primary : colors.subtle,
-              opacity: isAnswered ? 1 : 0.7,
-            },
-          ]}
-          onPress={handleNext}
-          disabled={!isAnswered || isSubmitting}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator color="white" size="small" />
-          ) : (
-            <>
-              <Text style={styles.nextButtonText}>
-                {isLastQuestion ? "완료" : "다음"}
-              </Text>
-              {!isLastQuestion && (
-                <FontAwesome
-                  name="arrow-right"
-                  size={16}
-                  color="white"
-                  style={styles.nextIcon}
-                />
-              )}
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
+        {isLastQuestion && Object.keys(answers).length === QUESTIONS.length && (
+          <TouchableOpacity
+            style={[styles.completeButton, { backgroundColor: colors.primary }]}
+            onPress={handleComplete}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <Text style={styles.completeButtonText}>설문 완료</Text>
+            )}
+          </TouchableOpacity>
+        )}
+      </ScrollView>
     </View>
   );
 }
@@ -307,9 +241,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 50,
-    paddingBottom: 16,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === "ios" ? 50 : 20,
+    paddingBottom: 10,
   },
   backButton: {
     padding: 10,
@@ -322,85 +256,52 @@ const styles = StyleSheet.create({
     width: 40,
   },
   progressContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    marginBottom: 20,
+    height: 6,
+    backgroundColor: "#E0E0E0",
+    width: "100%",
   },
   progressBar: {
-    flex: 1,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 12,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: 4,
-  },
-  progressText: {
-    fontSize: 14,
-    fontWeight: "bold",
+    height: 6,
   },
   content: {
     flex: 1,
   },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
+  contentContainer: {
+    padding: 20,
+    paddingBottom: 40,
   },
-  questionImage: {
-    width: "100%",
-    height: 200,
-    borderRadius: 16,
-    marginBottom: 24,
+  questionNumber: {
+    fontSize: 14,
+    opacity: 0.7,
+    marginBottom: 8,
   },
-  questionText: {
-    fontSize: 22,
+  question: {
+    fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 24,
-    lineHeight: 30,
+    marginBottom: 30,
   },
   optionsContainer: {
-    gap: 16,
+    marginTop: 10,
   },
-  optionCard: {
-    borderRadius: 12,
-    borderWidth: 1,
+  optionButton: {
     padding: 16,
-    position: "relative",
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
   },
   optionText: {
     fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 5,
   },
-  optionDescription: {
-    fontSize: 14,
-    opacity: 0.7,
-  },
-  checkIcon: {
-    position: "absolute",
-    top: 16,
-    right: 16,
-  },
-  footer: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-  },
-  nextButton: {
-    flexDirection: "row",
+  completeButton: {
+    padding: 16,
+    borderRadius: 12,
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    borderRadius: 30,
+    marginTop: 30,
   },
-  nextButtonText: {
+  completeButtonText: {
     color: "white",
     fontSize: 16,
     fontWeight: "bold",
-  },
-  nextIcon: {
-    marginLeft: 8,
   },
 });

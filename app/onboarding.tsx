@@ -1,17 +1,17 @@
-import React, { useRef, useState } from "react";
-import {
-  StyleSheet,
-  Animated,
-  Dimensions,
-  TouchableOpacity,
-  View as RNView,
-} from "react-native";
-import { router } from "expo-router";
 import { Text, View } from "@/components/Themed";
 import Colors from "@/constants/Colors";
-import { useColorScheme } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useRef, useState } from "react";
+import {
+  Animated,
+  Dimensions,
+  View as RNView,
+  StyleSheet,
+  TouchableOpacity,
+  useColorScheme,
+} from "react-native";
 
 const { width } = Dimensions.get("window");
 
@@ -145,12 +145,16 @@ export default function OnboardingScreen() {
 
   const handleNext = () => {
     if (isLastPage) {
-      router.replace("/(tabs)");
+      router.push("/auth/signup");
     } else {
-      flatListRef.current?.scrollToIndex({
-        index: currentPage + 1,
-        animated: true,
-      });
+      const nextPage = currentPage + 1;
+      if (flatListRef.current) {
+        flatListRef.current.scrollToOffset({
+          offset: nextPage * width,
+          animated: true,
+        });
+        setCurrentPage(nextPage);
+      }
     }
   };
 
