@@ -8,15 +8,15 @@ import { Link, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  useColorScheme,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    useColorScheme,
 } from "react-native";
 
 export default function LoginScreen() {

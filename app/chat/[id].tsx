@@ -7,18 +7,18 @@ import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  useColorScheme,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    useColorScheme,
 } from "react-native";
 
 // 더미 데이터 - 실제 구현 시 서버에서 가져오는 데이터로 교체할 예정
@@ -319,14 +319,14 @@ export default function ChatDetailScreen() {
       // 실제 WebSocket이 연결되면 자동 응답 코드는 제거해야 합니다
       // 현재는 임시로 주석 처리합니다
       /* 
-      setTimeout(() => {
-        const autoReply = {
-          id: (Date.now() + 1).toString(),
-          text: "네, 알겠습니다. 더 이야기해볼까요?",
-          senderId: "other",
-          timestamp: Date.now() + 1,
-        };
-        setMessages((prev) => [autoReply, ...prev]);
+    setTimeout(() => {
+      const autoReply = {
+        id: (Date.now() + 1).toString(),
+        text: "네, 알겠습니다. 더 이야기해볼까요?",
+        senderId: "other",
+        timestamp: Date.now() + 1,
+      };
+      setMessages((prev) => [autoReply, ...prev]);
       }, 1500);
       */
     } catch (error) {

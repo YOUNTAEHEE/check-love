@@ -1,163 +1,306 @@
+import Config from "@/constants/Config";
+import { convertApiError } from "@/utils/errors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Config from "../constants/Config";
+import axios, { AxiosInstance } from "axios";
+import { Configuration } from "../api-client/configuration";
+// OpenAPI 자동 생성 클래스 가져오기
+import {
+  AuthApi,
+  AuthApiAuthLoginRequest,
+  LoginRequest,
+  UserProfileResponse,
+} from "../api-client/api";
 
-// API 응답 타입
-interface ApiResponse<T> {
+/**
+ * API 응답 인터페이스
+ */
+export interface ApiResponse<T = any> {
   data?: T;
-  error?: string;
   success: boolean;
+  error?: string;
 }
 
-class ApiService {
-  private token: string | null = null;
+/**
+ * 토큰을 가져오는 유틸리티 함수
+ */
+const getStoredToken = async (): Promise<string | null> => {
+  try {
+    return await AsyncStorage.getItem(Config.TOKEN_KEY);
+  } catch (error) {
+    console.error("토큰 조회 오류:", error);
+    return null;
+  }
+};
 
-  // 토큰 설정
-  async setToken(token: string) {
-    this.token = token;
-    await AsyncStorage.setItem(Config.TOKEN_KEY, token);
+/**
+ * API 서비스 클래스
+ * - API 클라이언트 인스턴스 관리
+ * - 인증 토큰 관리
+ * - HTTP 요청 처리
+ */
+class ApiService {
+  private static instance: ApiService;
+  private axios: AxiosInstance;
+  private token: string | null = null;
+  private baseUrl: string = Config.API_URL;
+
+  // OpenAPI 자동 생성 클라이언트
+  public authApi: AuthApi;
+
+  private constructor() {
+    // Axios 인스턴스 초기화
+    this.axios = axios.create({
+      baseURL: this.baseUrl,
+      timeout: Config.DEFAULT_TIMEOUT,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    // API 클라이언트 설정
+    const config = new Configuration({
+      basePath: this.baseUrl,
+      accessToken: () => this.token || "",
+    });
+
+    // API 클라이언트 초기화
+    this.authApi = new AuthApi(config, this.baseUrl, this.axios);
+
+    // 요청 인터셉터 설정
+    this.axios.interceptors.request.use(
+      async (config: any) => {
+        // 토큰이 없으면 AsyncStorage에서 시도
+        if (!this.token) {
+          this.token = await getStoredToken();
+        }
+
+        // 토큰이 있으면 헤더에 추가
+        if (this.token && config.headers) {
+          config.headers["Authorization"] = `Bearer ${this.token}`;
+        }
+
+        return config;
+      },
+      (error: any) => Promise.reject(error)
+    );
+
+    // 응답 인터셉터 설정
+    this.axios.interceptors.response.use(
+      (response: any) => response,
+      (error: any) => {
+        const appError = convertApiError(error);
+
+        // 인증 오류 (401) 처리
+        if (appError.status === 401) {
+          // 토큰 만료 처리 로직
+          this.removeToken();
+          // AuthContext에서 나머지 로그아웃 처리
+        }
+
+        return Promise.reject(appError);
+      }
+    );
   }
 
-  // 토큰 가져오기
-  async getToken(): Promise<string | null> {
-    if (!this.token) {
-      this.token = await AsyncStorage.getItem(Config.TOKEN_KEY);
+  /**
+   * 싱글톤 인스턴스 반환
+   */
+  public static getInstance(): ApiService {
+    if (!ApiService.instance) {
+      ApiService.instance = new ApiService();
     }
+    return ApiService.instance;
+  }
+
+  /**
+   * 액세스 토큰 설정
+   */
+  public setToken(token: string): void {
+    this.token = token;
+
+    // API 클라이언트 설정 업데이트
+    const config = new Configuration({
+      basePath: this.baseUrl,
+      accessToken: () => this.token || "",
+    });
+
+    this.authApi = new AuthApi(config, this.baseUrl, this.axios);
+  }
+
+  /**
+   * 토큰 제거
+   */
+  public removeToken(): void {
+    this.token = null;
+    AsyncStorage.removeItem(Config.TOKEN_KEY).catch(console.error);
+  }
+
+  /**
+   * 현재 토큰 반환
+   */
+  public getToken(): string | null {
     return this.token;
   }
 
-  // 토큰 제거 (로그아웃)
-  async removeToken() {
-    this.token = null;
-    await AsyncStorage.removeItem(Config.TOKEN_KEY);
-    await AsyncStorage.removeItem("userData");
+  /**
+   * API 기본 URL 설정
+   */
+  public setBaseUrl(url: string): void {
+    this.baseUrl = url;
+    this.axios.defaults.baseURL = url;
+
+    // API 클라이언트 설정 업데이트
+    const config = new Configuration({
+      basePath: this.baseUrl,
+      accessToken: () => this.token || "",
+    });
+
+    this.authApi = new AuthApi(config, this.baseUrl, this.axios);
   }
 
-  // 기본 HTTP 요청 메서드
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<ApiResponse<T>> {
-    try {
-      const token = await this.getToken();
-      const url = `${Config.API_URL}${endpoint}`;
-
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-        ...options.headers,
-      };
-
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(url, {
-        ...options,
-        headers,
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return { data, success: true };
-      } else if (response.status === 401) {
-        // 인증 오류 처리
-        await this.removeToken();
-        return {
-          error: "인증이 필요합니다. 다시 로그인해주세요.",
-          success: false,
-        };
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        return {
-          error: errorData.message || "서버 오류가 발생했습니다.",
-          success: false,
-        };
-      }
-    } catch (error) {
-      console.error("API 요청 오류:", error);
-      return {
-        error: "네트워크 오류가 발생했습니다.",
-        success: false,
-      };
-    }
+  /**
+   * 요청 헤더 설정
+   */
+  public setHeader(key: string, value: string): void {
+    this.axios.defaults.headers.common[key] = value;
   }
 
-  // GET 요청
-  get<T>(
-    endpoint: string,
+  /**
+   * Axios 인스턴스 반환
+   */
+  public getAxiosInstance(): AxiosInstance {
+    return this.axios;
+  }
+
+  /**
+   * GET 요청 수행
+   */
+  public async get<T = any>(
+    url: string,
     params?: Record<string, string>
   ): Promise<ApiResponse<T>> {
-    const url = params
-      ? `${endpoint}?${new URLSearchParams(params)}`
-      : endpoint;
-    return this.request<T>(url, { method: "GET" });
+    try {
+      const response = await this.axios.get<T>(url, { params });
+      return {
+        data: response.data,
+        success: true,
+      };
+    } catch (error) {
+      const appError = convertApiError(error);
+      return {
+        success: false,
+        error: appError.message,
+      };
+    }
   }
 
-  // POST 요청
-  post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, {
-      method: "POST",
-      body: data ? JSON.stringify(data) : undefined,
-    });
+  /**
+   * POST 요청 수행
+   */
+  public async post<T = any>(url: string, data?: any): Promise<ApiResponse<T>> {
+    try {
+      const response = await this.axios.post<T>(url, data);
+      return {
+        data: response.data,
+        success: true,
+      };
+    } catch (error) {
+      const appError = convertApiError(error);
+      return {
+        success: false,
+        error: appError.message,
+      };
+    }
   }
 
-  // PUT 요청
-  put<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, {
-      method: "PUT",
-      body: data ? JSON.stringify(data) : undefined,
-    });
+  /**
+   * PUT 요청 수행
+   */
+  public async put<T = any>(url: string, data?: any): Promise<ApiResponse<T>> {
+    try {
+      const response = await this.axios.put<T>(url, data);
+      return {
+        data: response.data,
+        success: true,
+      };
+    } catch (error) {
+      const appError = convertApiError(error);
+      return {
+        success: false,
+        error: appError.message,
+      };
+    }
   }
 
-  // DELETE 요청
-  delete<T>(endpoint: string): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, { method: "DELETE" });
+  /**
+   * DELETE 요청 수행
+   */
+  public async delete<T = any>(url: string): Promise<ApiResponse<T>> {
+    try {
+      const response = await this.axios.delete<T>(url);
+      return {
+        data: response.data,
+        success: true,
+      };
+    } catch (error) {
+      const appError = convertApiError(error);
+      return {
+        success: false,
+        error: appError.message,
+      };
+    }
   }
 
-  // 인증 관련 API
-  async login(
-    email: string,
+  /**
+   * 사용자 로그인
+   */
+  public async login(
+    username: string,
     password: string
-  ): Promise<ApiResponse<{ accessToken: string; userId: number }>> {
-    const response = await this.post<{ accessToken: string; userId: number }>(
-      "/auth/login",
-      { email, password }
-    );
+  ): Promise<{ token: string; userId: string }> {
+    // 자동 생성된 API 클라이언트의 인터페이스에 맞게 호출
+    const loginRequestData: LoginRequest = {
+      accountInfo: {
+        username,
+        password,
+      },
+    };
 
-    if (response.success && response.data?.accessToken) {
-      await this.setToken(response.data.accessToken);
+    const requestParams: AuthApiAuthLoginRequest = {
+      loginRequest: loginRequestData,
+    };
 
-      // 사용자 정보 저장
-      if (response.data.userId) {
-        await AsyncStorage.setItem(
-          "userData",
-          JSON.stringify({
-            userId: response.data.userId,
-          })
-        );
-      }
+    const response = await this.authApi.authLogin(requestParams);
+    const token = response.data.authToken.token;
+    // 사용자 ID는 로그인 응답에서 직접 가져올 수 없으므로 추가로 사용자 정보를 요청
+    const userProfile = await this.authApi.getCurrentUser();
+    const userId = String(userProfile.data.id || "");
+
+    if (token) {
+      this.setToken(token);
+      await AsyncStorage.setItem(Config.TOKEN_KEY, token);
+      await AsyncStorage.setItem(
+        Config.USER_DATA_KEY,
+        JSON.stringify({ userId })
+      );
     }
 
-    return response;
+    return { token, userId };
   }
 
-  // 로그아웃
-  async logout(): Promise<ApiResponse<any>> {
+  /**
+   * 사용자 로그아웃
+   */
+  public async logout(): Promise<void> {
     try {
-      // 클라이언트에서 토큰 제거
-      await this.removeToken();
-
-      // 서버에 로그아웃 요청 - 필요한 경우 주석 해제
-      // const response = await this.post<any>('/auth/logout');
-      // return response;
-
-      // 서버 엔드포인트가 없는 경우 클라이언트 측에서만 처리
-      return { success: true };
+      // 백엔드 로그아웃 요청
+      await this.authApi.authLogout();
     } catch (error) {
-      console.error("로그아웃 오류:", error);
-      return {
-        error: "로그아웃 중 오류가 발생했습니다.",
-        success: false,
-      };
+      console.error("로그아웃 API 오류:", error);
+    } finally {
+      // 로컬 토큰 제거
+      this.removeToken();
+      await AsyncStorage.removeItem(Config.USER_DATA_KEY);
     }
   }
 
@@ -197,7 +340,24 @@ class ApiService {
   getUserProfile(userId: number): Promise<ApiResponse<any>> {
     return this.get(`/users/${userId}`);
   }
+
+  // 현재 사용자 정보 가져오기
+  async getCurrentUser(): Promise<ApiResponse<UserProfileResponse>> {
+    try {
+      const response = await this.authApi.getCurrentUser();
+      return {
+        data: response.data,
+        success: true,
+      };
+    } catch (error) {
+      const appError = convertApiError(error);
+      return {
+        success: false,
+        error: appError.message,
+      };
+    }
+  }
 }
 
-// 싱글톤 인스턴스
-export default new ApiService();
+// 싱글톤 인스턴스 익스포트
+export default ApiService.getInstance();

@@ -2,9 +2,9 @@ import Config from "@/constants/Config";
 import ChatService from "@/services/ChatService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
+    DarkTheme,
+    DefaultTheme,
+    ThemeProvider,
 } from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
